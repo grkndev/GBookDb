@@ -1,7 +1,7 @@
 "use client";
-import { Checkbox } from "@/components/ui/checkbox"
+import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash } from "lucide-react";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,13 +12,39 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-// This type is used to define the shape of our data.
-// You can use a Zod schema here if you want.
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 export type Payment = {
   id: string;
   amount: number;
   status: "pending" | "processing" | "success" | "failed";
   email: string;
+};
+const handleDeleteRow = (rowId: string) => {
+  console.log("Delete row with id: ", rowId);
+};
+const handleEditRow = (rowId: string, updatedValues: Partial<Payment>) => {
+  console.log("Edit row with id: ", rowId, "with values: ", updatedValues);
 };
 
 export const columns: ColumnDef<Payment>[] = [
@@ -72,6 +98,24 @@ export const columns: ColumnDef<Payment>[] = [
     header: "Actions",
     cell: ({ row }) => {
       const payment = row.original;
+      const [editValues, setEditValues] = useState<Partial<Payment>>({
+        amount: payment.amount,
+        status: payment.status,
+        email: payment.email,
+      });
+      const [isChanged, setIsChanged] = useState(false);
+
+      const handleInputChange = (field: keyof Payment, value: string | number) => {
+        setEditValues((prev) => {
+          const newValues = { ...prev, [field]: value };
+          setIsChanged(
+            newValues.amount !== payment.amount ||
+            newValues.status !== payment.status ||
+            newValues.email !== payment.email
+          );
+          return newValues;
+        });
+      };
 
       return (
         <DropdownMenu>
@@ -83,14 +127,102 @@ export const columns: ColumnDef<Payment>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(payment.id)}
-            >
-              Copy payment ID
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+              <AlertDialog>
+                <AlertDialogTrigger className="flex items-center gap-x-2 w-full">
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Edit Payment</AlertDialogTitle>
+                  </AlertDialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="amount" className="text-right">
+                        Amount
+                      </Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        value={editValues.amount}
+                        onChange={(e) => handleInputChange("amount", parseFloat(e.target.value))}
+                        className="col-span-3"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="status" className="text-right">
+                        Status
+                      </Label>
+                      <Select
+                        value={editValues.status}
+                        onValueChange={(value) => handleInputChange("status", value)}
+                      >
+                        <SelectTrigger className="col-span-3">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="processing">Processing</SelectItem>
+                          <SelectItem value="success">Success</SelectItem>
+                          <SelectItem value="failed">Failed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="email" className="text-right">
+                        Email
+                      </Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={editValues.email}
+                        onChange={(e) => handleInputChange("email", e.target.value)}
+                        className="col-span-3"
+                      />
+                    </div>
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={!isChanged}
+                      onClick={() => handleEditRow(payment.id, editValues)}
+                    >
+                      Save
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+              <AlertDialog>
+                <AlertDialogTrigger className="flex items-center gap-x-2 w-full">
+                  <Trash className="h-4 w-4" />
+                  Delete
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Are you sure you want to delete?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete
+                      the payment record.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleDeleteRow(payment.id)}
+                      className="bg-red-700 hover:bg-red-500 text-white"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
